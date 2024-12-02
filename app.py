@@ -77,6 +77,31 @@ def getIngredients(name):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/recipes/<name>/nutrition', methods=['GET'])
+def getNutrition(name):
+    try:
+        recipe = recipes_collection.find_one({'name': {'$regex': f'^{name}$', '$options': 'i'}}, {'_id': 0})
+        
+        if not recipe:
+            return jsonify({"message": f"Recipe '{name}' not found"}), 404
+        
+        recipe_id = recipe['recipeID']
+        nutrition_cursor = nutritioninfo_collection.find({'recipeID': recipe_id})
+        
+        nutrition = [{'calories_per_serving': ing['calories_per_serving'], 'protein_grams': ing['protein_grams'], 'fat_grams': ing['fat_grams'], 'carbohydrates_grams': ing['carbohydrates_grams'], 'sugar_grams': ing['sugar_grams']} for ing in nutrition_cursor]
+        
+        response = {
+            'recipeID': recipe['recipeID'],
+            'name': recipe['name'],
+            'description': recipe.get('description', ''),
+            'majorIngredient': recipe.get('majorIngredient', ''),
+            'nutritionInformation': nutrition
+        }
+        
+        return jsonify(response)
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     
 if __name__ == '__main__':
     app.run(debug=True)
