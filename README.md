@@ -1,4 +1,4 @@
-# groupC - DessertRecipeFinderAPI
+# DessertRecipeFinderAPI
 Description of the file inside the Repository
 - RecipeAPI Folder: Extracted data from each of the collections in the mobngodb database 
 - app.py: The python code to run the api (in localhost)
