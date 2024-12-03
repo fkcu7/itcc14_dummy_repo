@@ -105,7 +105,7 @@ def getNutrition(name):
         return jsonify({"error": str(e)}), 500
     
     
-@app.route('/user/create', methods=['POST'])
+@app.route('/users/create', methods=['POST'])
 def createUser():
     try: 
         if not request.is_json:
@@ -152,7 +152,7 @@ def createUser():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
-@app.post('/user/login')
+@app.post('/users/login')
 def login():
     if request.is_json():
         user_data = request.get_json()
