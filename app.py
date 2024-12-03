@@ -1,5 +1,7 @@
 from flask import Flask, request, redirect, jsonify
 from pymongo import MongoClient
+from werkzeug.security import check_password_hash, generate_password_hash
+import hashlib
 
 app = Flask(__name__)
 
@@ -51,7 +53,7 @@ def getAll():
     return jsonify(response)
 
 
-@app.route('/recipes/<string: name>/ingredients', methods=['GET'])
+@app.route('/recipes/<name>/ingredients', methods=['GET'])
 def getIngredients(name):
     try:
         recipe = recipes_collection.find_one({'name': {'$regex': f'^{name}$', '$options': 'i'}}, {'_id': 0})
@@ -104,8 +106,53 @@ def getNutrition(name):
         return jsonify({"error": str(e)}), 500
     
     
-@app.route('/login', methods=['POST'])
-def login():
-    if request.method == 'POST'
+@app.route('/user/create', methods=['POST'])
+def createUser():
+    try: 
+        if not request.is_json:
+            return jsonify({'error': 'Request must be in JSON format'}), 400
+        
+        user_data = request.get_json()
+        username = user_data.get('username')
+        password = user_data.get('password')
+        password2 = user_data.get('password2')
+        name = user_data.get('name')
+        email = user_data.get('email')
+        role = user_data.get('role')
+        
+        if not username or not password or not name or not email or not role:
+            return jsonify({'error': 'All fields (username, password, name, email, role) are required'}), 400
+        
+        if password != password2:
+            return jsonify({'error': 'Password mismatched.'}), 400
+        
+        if users_collection.find_one({'username': username}):
+            return jsonify({'error': 'Username already exists'}), 409
+        
+        if users_collection.find_one({'email': email}):
+            return jsonify({'error': 'Email already registered'}), 409
+        
+        hashpass = generate_password_hash(password)
+        
+        forAPI = username + password
+        
+        apiKey = hashlib.md5(forAPI.encode()).hexdigest()
+
+        new_user = {
+            'userID': username,
+            'password': hashpass,
+            'name': name,
+            'email': email,
+            'role': role,
+            'key': apiKey
+        }
+        
+        users_collection.insert_one(new_user)
+         
+        return jsonify({'message': 'User created successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+   
 if __name__ == '__main__':
     app.run(debug=True)
