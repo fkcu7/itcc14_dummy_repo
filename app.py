@@ -12,7 +12,7 @@ nutritioninfo_collection = db['Nutritioninfo']
 users_collection = db['Users']
 
 
-@app.route('/', methods=['GET'])
+@app.route('/recipes', methods=['GET'])
 def getAll():
     recipes = recipes_collection.find({})
     response = []
@@ -51,7 +51,7 @@ def getAll():
     return jsonify(response)
 
 
-@app.route('/recipes/<name>/ingredients', methods=['GET'])
+@app.route('/recipes/<string: name>/ingredients', methods=['GET'])
 def getIngredients(name):
     try:
         recipe = recipes_collection.find_one({'name': {'$regex': f'^{name}$', '$options': 'i'}}, {'_id': 0})
@@ -103,5 +103,9 @@ def getNutrition(name):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+    
+@app.route('/login', methods=['POST'])
+def login():
+    if request.method == 'POST'
 if __name__ == '__main__':
     app.run(debug=True)
