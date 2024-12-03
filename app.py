@@ -133,7 +133,7 @@ def createUser():
         
         hashpass = generate_password_hash(password)
         
-        forAPI = username + password
+        forAPI = role + username + password + email
         
         apiKey = hashlib.md5(forAPI.encode()).hexdigest()
 
