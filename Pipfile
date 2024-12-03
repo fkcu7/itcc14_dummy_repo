@@ -6,7 +6,10 @@ name = "pypi"
 [packages]
 flask = "*"
 pymongo = "*"
+<<<<<<< HEAD
 flask-restx = "*"
+=======
+>>>>>>> b7901c99d1aeaa435d6b2fd9bf41ec4e7bd6db79
 
 [dev-packages]
 
