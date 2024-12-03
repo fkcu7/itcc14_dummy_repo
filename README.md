@@ -20,18 +20,21 @@ Description of the file inside the Repository
 ## How to setup and use the API
 
 ## Http requests
-- ###### GET ALL RECIPES: http://127.0.0.1:5000/Recipes/ 
-- ###### GET A RECIPE TROUGH PARAMS: http://127.0.0.1:5000/Recipes/search?<param=value>
-- ###### POST A RECIPE: http://127.0.0.1:5000/Recipes/ use in post method
+- ###### GET ALL RECIPES: http://127.0.0.1:5000/recipes/ 
+- ###### GET A RECIPE TROUGH PARAMS: http://127.0.0.1:5000/recipes/search?<param=value>
+- ###### POST A RECIPE: http://127.0.0.1:5000/recipes/ use in post method
+- ###### GET ALL INGREDIENTS ONLY OF 1 RECIPE: http://127.0.0.1:5000/recipes/<name>/ingredients
+- ###### GET ALL NUTRITION ONLY OF 1 RECIPE: http://127.0.0.1:5000/recipes/<name>/nutrition
+- ###### CREATE A USER: http://127.0.0.1:5000/user/create
 
 
 
 add
-author/recipe/create
+user/recipe/create
 
-author/recipe/delete
+user/recipe/delete
 
-author/recipe/update
+user/recipe/update
 
 
 recipe/<name>/ingredients
