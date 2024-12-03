@@ -1,27 +1,3 @@
-<<<<<<< HEAD
-from flask import Flask, request, jsonify
-from pymongo import MongoClient
-import json 
-
-app = Flask(__name__)
-
-client = MongoClient('mongodb+srv://20220024573:T7CmWQ47ed9s8kpv@recipecluster.81ir5.mongodb.net/')
-
-db = client['RecAPI']
-recipe_collection = db['Recipes']
-
-@app.route('/', methods=['GET'])
-def getAll():
-    recipes = list(recipe_collection.find({}, {'_id': 0}))
-    if not recipes:
-        return jsonify({"message": "No recipes found"}), 404  
-    return jsonify(recipes)
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
- 
-=======
 from flask import Flask, request, redirect, jsonify
 from pymongo import MongoClient
 
@@ -34,7 +10,6 @@ ingredients_collection = db['Ingredients']
 dietarybenefits_collection = db['Dietarybenefits']
 nutritioninfo_collection = db['Nutritioninfo']
 users_collection = db['Users']
-
 
 @app.route('/', methods=['GET'])
 def getAll():
@@ -129,4 +104,3 @@ def getNutrition(name):
     
 if __name__ == '__main__':
     app.run(debug=True)
->>>>>>> b7901c99d1aeaa435d6b2fd9bf41ec4e7bd6db79
