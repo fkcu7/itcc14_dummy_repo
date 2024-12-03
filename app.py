@@ -152,6 +152,24 @@ def createUser():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
+@app.post('/user/login')
+def login():
+    if request.is_json():
+        user_data = request.get_json()
+        userID = user_data.get('username')
+        hashpass = user_data.get('password')
+                
+    if not userID or not hashpass:
+            return jsonify({"error": "Both 'username' and 'password' fields are required"}), 400
+    
+    user = users_collection.find_one({'username': userID})
+    if not user:
+        return jsonify({"error": "Invalid username or password"}), 401
+    
+    if not check_password_hash(user['password'], hashpass):
+        return jsonify({"error": "Invalid username or password"}), 401
+    
+    return jsonify({"message": "Login successful", "username": userID}), 200
    
 if __name__ == '__main__':
     app.run(debug=True)
