@@ -1,6 +1,5 @@
 from flask import Flask, request, redirect, jsonify
 from pymongo import MongoClient
-from werkzeug.security import check_password_hash, generate_password_hash
 import hashlib
 
 app = Flask(__name__)
@@ -131,14 +130,14 @@ def createUser():
         if users_collection.find_one({'email': email}):
             return jsonify({'error': 'Email already registered'}), 409
         
-        hashpass = generate_password_hash(password)
+        hashpass = hashlib.md5(password.encode()).hexdigest()
         
         forAPI = role + username + password + email
         
         apiKey = hashlib.md5(forAPI.encode()).hexdigest()
 
         new_user = {
-            'userID': username,
+            'username': username,
             'password': hashpass,
             'name': name,
             'email': email,
@@ -152,26 +151,33 @@ def createUser():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
-@app.post('/users/login')
+@app.route('/users/login', methods=['POST'])
 def login():
-    if request.is_json():
+    try:
+        if not request.is_json:
+            return jsonify({'error': 'Request must be in JSON format'}), 400
+        
         user_data = request.get_json()
-        userID = user_data.get('username')
-        hashpass = user_data.get('password')
-                
-    if not userID or not hashpass:
-            return jsonify({"error": "Both 'username' and 'password' fields are required"}), 400
+        username = user_data.get('username')
+        password = user_data.get('password')
+            
+        if not username or not password:
+            return jsonify({'error': "Both 'username' and 'password' fields are required"}), 400
+        
+        user = users_collection.find_one({'userID': username})
+        hashpass = hashlib.md5(password.encode()).hexdigest()
+        
+        if not user:
+            return jsonify({'error': "Invalid username."}), 401
+        
+        if  hashpass != user['password']: 
+            return jsonify({'error': "Invalid  password."}), 401
+        
+        return jsonify({'key': user['key']}), 200
     
-    user = users_collection.find_one({'username': userID})
-    if not user:
-        return jsonify({"error": "Invalid username or password"}), 401
-    
-    if not check_password_hash(user['password'], hashpass):
-        return jsonify({"error": "Invalid username or password"}), 401
-    
-    return jsonify({"message": "Login successful", "username": userID}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-
-
+ 
 if __name__ == '__main__':
     app.run(debug=True)
