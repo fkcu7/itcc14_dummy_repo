@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, jsonify
+from flask import Flask, request, jsonify
 from pymongo import MongoClient
 import hashlib
 
@@ -12,98 +12,127 @@ dietarybenefits_collection = db['Dietarybenefits']
 nutritioninfo_collection = db['Nutritioninfo']
 users_collection = db['Users']
 
-@app.route('/recipes', methods=['GET'])
-def getAll():
-    recipes = recipes_collection.find({})
+
+
+## FUNCTIONS ##
+def checkKey(username, key):
+    user = users_collection.find_one({'userID': username})
+    userAPIkey = user['key']
+    
+    if userAPIkey == key:
+        return True
+    
+def getRecipes(recipes):
     response = []
     for recipe in recipes:
-        recipe_ingredients = ingredients_collection.find({'recipeID': recipe['recipeID']})
-        ingredients = [{'name': ing['name'], 'quantity': ing['quantity']} for ing in recipe_ingredients]
+        dietarybenefits = getDietaryBenefits(recipe['recipeID'])
+        nutritioninfo = getNutritionInfo(recipe['recipeID'])
+        
+        response.append(
+                {
+                    'recipeID': recipe['recipeID'],
+                    'name': recipe['name'],
+                    'description': recipe['description'],
+                    'origin': recipe['origin'],
+                    'category': recipe['type'],
+                    'serving': recipe['servings'],
+                    'preptime': recipe['prep_time'],
+                    'cooktime': recipe['cook_time'],
+                    'difficulty': recipe['difficulty'],
+                    'majorIngredient': recipe['majorIngredient'],
+                    'instructions': recipe['instructions'],
+                    'ingredients': recipe['ingredients'],
+                    'dietarybenefits': dietarybenefits,
+                    'nutrition': nutritioninfo,
+                    'author': recipe['user']
+                }
+            )
+    return response
 
-        recipe_dietarybenefits = dietarybenefits_collection.find({'recipeID': recipe['recipeID']})
-        dietarybenefits = [
-            {
-                'is_vegan': diet['is_vegan'],
-                'is_vegetarian': diet['is_vegetarian'],
-                'is_gluten_free': diet['is_gluten_free'],
-                'allergens': diet['allergens']
-            } 
-            for diet in recipe_dietarybenefits
-        ]
-        response.append({
-            'recipeID': recipe['recipeID'],
-            'name': recipe['name'],
-            'description': recipe.get('description', ''),
-            'origin': recipe.get('origin', ''),
-            'category': recipe.get('type', ''),
-            'serving': recipe.get('servings', ''),
-            'preptime': recipe.get('prep_time', ''),
-            'cooktime': recipe.get('cook_time', ''),
-            'difficulty': recipe.get('difficulty', ''),
-            'majorIngredient': recipe.get('majorIngredient', ''),
-            'instructions': recipe.get('instructions', ''),
-            'createdDate': recipe.get('createdAt', ''),
-            'UpdatedDate': recipe.get('updatedAt', ''),
-            'ingredients': ingredients,
-            'dietarybenefits': dietarybenefits
-        })
-    
-    return jsonify(response)
+def getDietaryBenefits(recipeID):
+    recipe_dietarybenefits = dietarybenefits_collection.find({'recipeID': recipeID})
+    dietarybenefits = [
+        {
+            'is_vegan': benefits['is_vegan'],
+            'is_vegetarian': benefits['is_vegetarian'],
+            'is_gluten_free': benefits['is_gluten_free'],
+            'allergens': benefits['allergens']
+        } 
+        for benefits in recipe_dietarybenefits
+    ]
+    return dietarybenefits
 
-
-@app.route('/recipes/<name>/ingredients', methods=['GET'])
-def getIngredients(name):
-    try:
-        recipe = recipes_collection.find_one({'name': {'$regex': f'^{name}$', '$options': 'i'}}, {'_id': 0})
-        
-        if not recipe:
-            return jsonify({"message": f"Recipe '{name}' not found"}), 404
-        
-        recipe_id = recipe['recipeID']
-        ingredients_cursor = ingredients_collection.find({'recipeID': recipe_id})
-        
-        ingredients = [{'name': ing['name'], 'quantity': ing['quantity']} for ing in ingredients_cursor]
-        
-        response = {
-            'recipeID': recipe['recipeID'],
-            'name': recipe['name'],
-            'description': recipe.get('description', ''),
-            'majorIngredient': recipe.get('majorIngredient', ''),
-            'ingredients': ingredients
+def getNutritionInfo(recipeID):
+    recipe_nutrition = nutritioninfo_collection.find({'recipeID': recipeID})
+    nutritioninfo = [
+        {
+            'calories_per_serving': nutrition['calories_per_serving'],
+            'protein_grams': nutrition['protein_grams'],
+            'fat_grams': nutrition['fat_grams'],
+            'carbohydrates_grams': nutrition['carbohydrates_grams'],
+            'sugar_grams': nutrition['sugar_grams']
         }
-        
-        return jsonify(response)
+        for nutrition in recipe_nutrition
+    ]
+    return nutritioninfo
     
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+def deleteNutritionInfo(recipeID):
+    nutritioninfo_collection.delete_one({'recipeID': recipeID})
 
-@app.route('/recipes/<name>/nutrition', methods=['GET'])
+def deleteDietaryBenefits(recipeID):
+    dietarybenefits_collection.delete_one({'recipeID': recipeID})
+ 
+ 
+ 
+## RECIPES ##   
+@app.route('/recipes', methods=['GET'])
+def getAll():
+    try:
+        recipes = recipes_collection.find({})
+        response = getRecipes(recipes)
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/recipes/<name>/nutrition-info', methods=['GET'])
 def getNutrition(name):
     try:
         recipe = recipes_collection.find_one({'name': {'$regex': f'^{name}$', '$options': 'i'}}, {'_id': 0})
-        
+
         if not recipe:
             return jsonify({"message": f"Recipe '{name}' not found"}), 404
         
-        recipe_id = recipe['recipeID']
-        nutrition_cursor = nutritioninfo_collection.find({'recipeID': recipe_id})
-        
-        nutrition = [{'calories_per_serving': ing['calories_per_serving'], 'protein_grams': ing['protein_grams'], 'fat_grams': ing['fat_grams'], 'carbohydrates_grams': ing['carbohydrates_grams'], 'sugar_grams': ing['sugar_grams']} for ing in nutrition_cursor]
-        
-        response = {
-            'recipeID': recipe['recipeID'],
-            'name': recipe['name'],
-            'description': recipe.get('description', ''),
-            'majorIngredient': recipe.get('majorIngredient', ''),
-            'nutritionInformation': nutrition
-        }
-        
-        return jsonify(response)
-    
+        response = [
+            {
+                'name': recipe['name'],
+                'nutrition_info': getNutritionInfo(recipe['recipeID'])
+            }
+        ]
+        return jsonify(response), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+@app.route('/recipes/<name>/dietary-benefits', methods=['GET'])
+def getDietary(name):
+    try:
+        recipe = recipes_collection.find_one({'name': {'$regex': f'^{name}$', '$options': 'i'}}, {'_id': 0})
+
+        if not recipe:
+            return jsonify({"message": f"Recipe '{name}' not found"}), 404
+        
+        response = [
+            {
+                'name': recipe['name'],
+                'nutrition_info': getDietaryBenefits(recipe['recipeID'])
+            }
+        ] 
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     
+ 
+## USER ##  
+ 
 @app.route('/users/create', methods=['POST'])
 def createUser():
     try: 
@@ -113,7 +142,6 @@ def createUser():
         user_data = request.get_json()
         username = user_data.get('username')
         password = user_data.get('password')
-        password2 = user_data.get('password2')
         name = user_data.get('name')
         email = user_data.get('email')
         role = user_data.get('role')
@@ -121,10 +149,7 @@ def createUser():
         if not username or not password or not name or not email or not role:
             return jsonify({'error': 'All fields (username, password, name, email, role) are required'}), 400
         
-        if password != password2:
-            return jsonify({'error': 'Password mismatched.'}), 400
-        
-        if users_collection.find_one({'username': username}):
+        if users_collection.find_one({'userID': username}):
             return jsonify({'error': 'Username already exists'}), 409
         
         if users_collection.find_one({'email': email}):
@@ -137,20 +162,19 @@ def createUser():
         apiKey = hashlib.md5(forAPI.encode()).hexdigest()
 
         new_user = {
-            'username': username,
+            'userID': username,
             'password': hashpass,
             'name': name,
             'email': email,
             'role': role,
             'key': apiKey
         }
-        
         users_collection.insert_one(new_user)
          
         return jsonify({'message': 'User created successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
+ 
 @app.route('/users/login', methods=['POST'])
 def login():
     try:
@@ -162,7 +186,7 @@ def login():
         password = user_data.get('password')
             
         if not username or not password:
-            return jsonify({'error': "Both 'username' and 'password' fields are required"}), 400
+            return jsonify({'error': "Both 'username' and 'password' fields are required."}), 400
         
         user = users_collection.find_one({'userID': username})
         hashpass = hashlib.md5(password.encode()).hexdigest()
@@ -177,7 +201,86 @@ def login():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/users/delete', methods=['DELETE'])
+def deleteUser():
+    try:
+        if request.is_json:
+            user_data = request.get_json()
+            username = user_data.get('username')
+            password = user_data.get('password')
+            
+        if not username or not password:
+            return jsonify({'error': "Both 'username' and 'password' fields are required."}), 404
+        
+        user = users_collection.find_one({'userID': username})
+        hashpass = hashlib.md5(password.encode()).hexdigest()
+        
+        if not user:
+            return jsonify({'error': "Invalid username."}), 401
+        
+        if  hashpass != user['password']: 
+            return jsonify({'error': "Invalid  password."}), 401
+        
+        users_collection.delete_one({'userID': username})
+        return jsonify({'message': "User deletion successful."}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)})
+   
+@app.route('/<userID>/recipes', methods=['GET'])    
+def getRecipesByAuthor(userID):
+    key = request.args.get('key')
+    
+    if(checkKey(userID, key)):
+        try:
+            recipes = recipes_collection.find({'user': userID},{'_id': 0})
+            response = getRecipes(recipes) 
+            return jsonify(response), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    else:
+        return jsonify({'message':"Unauthorized access"}), 200
+  
+@app.route('/<userID>/recipes/<name>', methods=['GET'])    
+def getSpecificRecipeByAuthor(userID, name):
+    key = request.args.get('key')
+    
+    if(checkKey(userID, key)):
+        try:
+            recipes = recipes_collection.find({'user': userID, 'name': {'$regex': f'^{name}$', '$options': 'i'}},{'_id': 0})
+            response = getRecipes(recipes) 
+            return jsonify(response), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    else:
+        return jsonify({'message':"Unauthorized access"}), 200   
 
- 
+@app.route('/<userID>/recipes/delete', methods=['DELETE']) 
+def deleteRecipe(userID):
+    key = request.args.get('key')
+
+    if(checkKey(userID, key)):
+        try:
+            if request.is_json:
+                recipe_data = request.get_json()
+                recipename = recipe_data.get('name')
+                
+                recipe = recipes_collection.find_one({'name': recipename})
+                 
+                if recipe:
+                    if recipe['user'] == userID:
+                        recipeID = recipe['recipeID']
+                        deleteNutritionInfo(recipeID)
+                        deleteDietaryBenefits(recipeID)
+                        if recipes_collection.delete_one({'name': recipename}):
+                            return jsonify({'message': "Deletion successful"}), 200
+                    else:
+                        return jsonify({'error': "Unauthorized to delete recipe"}), 409 
+                else:
+                    return jsonify({'error': "Recipe not found"}), 404           
+        except Exception as e:
+            return jsonify({'error': str(e)})    
+        
+    
 if __name__ == '__main__':
     app.run(debug=True)
